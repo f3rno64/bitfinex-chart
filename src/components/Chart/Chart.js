@@ -45,17 +45,17 @@ export default class Chart extends React.Component {
     const { width, height } = this.props
 
     return (
-      <div className='bfxc__wrapper'>
+      <div className='bfxc__wrapper' style={{ width, height }}>
         <canvas
           width={width}
           height={height}
-          ref={this.ohlcCanvasRef}
+          ref={this.axisCanvasRef}
         />
 
         <canvas
           width={width}
           height={height}
-          ref={this.axisCanvasRef}
+          ref={this.ohlcCanvasRef}
         />
 
         <canvas

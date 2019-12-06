@@ -1,3 +1,7 @@
+.bfxc__wrapper {
+  background: #000;
+}
+
 .bfxc__wrapper canvas {
   position: absolute;
 }

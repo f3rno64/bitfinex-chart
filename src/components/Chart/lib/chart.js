@@ -60,17 +60,14 @@ export default class BitfinexTradingChart {
 
   clearAll () {
     this.clear(this.ohlcCanvas)
-    this.clear(this.axisCanvas, 'rgba(0, 0, 0, 0)')
-    this.clear(this.drawingCanvas, 'rgba(0, 0, 0, 0)')
+    this.clear(this.axisCanvas)
+    this.clear(this.drawingCanvas)
   }
 
-  clear (canvas, color = '#000') {
+  clear (canvas) {
     const ctx = canvas.getContext('2d')
     const { width, height } = this
-
-    ctx.fillStyle = color
     ctx.clearRect(0, 0, width, height)
-    ctx.fillRect(0, 0, width, height)
   }
 
   // TODO: refactor to cache the slice on pan (called for both axis & OHLC)
