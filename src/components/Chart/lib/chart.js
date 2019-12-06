@@ -9,6 +9,7 @@ const CANDLE_WIDTH_PX = 10 // TODO: implement/extract into zoom
 const CROSSHAIR_COLOR = '#666'
 
 const AXIS_COLOR = '#333'
+const AXIS_TICK_COLOR = '#222'
 const AXIS_LABEL_COLOR = '#999'
 const AXIS_LABEL_FONT_NAME = 'sans-serif'
 const AXIS_LABEL_FONT_SIZE_PX = 12
@@ -139,9 +140,9 @@ export default class BitfinexTradingChart {
       ctx.fillText(new Date(mts).getMinutes(), x, y, tickWidthPX)
 
       // tick
-      drawLine(this.axisCanvas, AXIS_COLOR, [
+      drawLine(this.axisCanvas, AXIS_TICK_COLOR, [
         { x, y: y - AXIS_LABEL_FONT_SIZE_PX },
-        { x, y: this.vp.size.h },
+        { x, y: 0 },
       ])
     }
 
@@ -168,9 +169,9 @@ export default class BitfinexTradingChart {
       ctx.fillText(Math.floor(minP + (tickHeightPrice * i)), x, y, this.width - this.vp.size.w)
 
       // tick
-      drawLine(this.axisCanvas, AXIS_COLOR, [
+      drawLine(this.axisCanvas, AXIS_TICK_COLOR, [
         { x: x - 3, y: y - (AXIS_LABEL_FONT_SIZE_PX / 2) },
-        { x: this.vp.size.w, y: y - (AXIS_LABEL_FONT_SIZE_PX / 2) },
+        { x: 0, y: y - (AXIS_LABEL_FONT_SIZE_PX / 2) },
       ])
     }
   }
