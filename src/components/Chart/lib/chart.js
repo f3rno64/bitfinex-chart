@@ -1,6 +1,7 @@
 import _last from 'lodash/last'
 import _max from 'lodash/max'
 import _min from 'lodash/min'
+import { RSI } from 'bfx-hf-indicators'
 
 import drawLine from './draw/line'
 
@@ -24,6 +25,7 @@ export default class BitfinexTradingChart {
     ohlcCanvas,
     axisCanvas,
     drawingCanvas,
+    indicatorCanvas,
     width,
     height,
     data,
@@ -32,6 +34,7 @@ export default class BitfinexTradingChart {
     this.ohlcCanvas = ohlcCanvas
     this.axisCanvas = axisCanvas
     this.drawingCanvas = drawingCanvas
+    this.indicatorCanvas = indicatorCanvas
     this.width = width
     this.height = height
     this.data = data
@@ -43,7 +46,7 @@ export default class BitfinexTradingChart {
     this.vp = {
       pan: { x: 0, y: 0 },
       origin: { x: 0, y: 0 },
-      size: { w: width - 100.5, h: height - 100.5 }
+      size: { w: width - 50.5, h: height - 200.5 }
     }
 
     this.onMouseUp = this.onMouseUp.bind(this)
@@ -54,6 +57,15 @@ export default class BitfinexTradingChart {
     this.drawingCanvas.addEventListener('mousedown', this.onMouseDown)
     this.drawingCanvas.addEventListener('mousemove', this.onMouseMove)
 
+    // TODO: TEMPORARY, only for testing
+    const rsi = new RSI([14])
+
+    for (let i = 0; i < data.length; i += 1) {
+      rsi.add(data[i][2]) // close
+    }
+
+    this.rsiPoints = [ ...rsi._values ]
+
     this.clearAll()
     this.renderAll()
   }
@@ -62,6 +74,7 @@ export default class BitfinexTradingChart {
     this.clear(this.ohlcCanvas)
     this.clear(this.axisCanvas)
     this.clear(this.drawingCanvas)
+    this.clear(this.indicatorCanvas)
   }
 
   clear (canvas) {
@@ -81,14 +94,52 @@ export default class BitfinexTradingChart {
     )
   }
 
+  // TODO: REMOVE! Only for testing indicator rendering techniques
+  getIndicatorDataInView () {
+    const panX = this.vp.pan.x + this.vp.origin.x
+    const candlePanOffset = panX > 0 ? Math.floor(panX / CANDLE_WIDTH_PX) : 0
+
+    return this.rsiPoints.slice(
+      this.rsiPoints.length - 1 - this.viewportWidthCandles - candlePanOffset,
+      this.rsiPoints.length - 1 - candlePanOffset
+    )
+  }
+
   renderAll () {
     this.renderOHLC()
+    this.renderIndicators()
     this.renderAxis()
-    this.renderDrawings()
+  }
+
+  // TODO: ONLY FOR TESTING!
+  renderIndicators () {
+    const ctx = this.ohlcCanvas.getContext('2d')
+    const candlesToRender = this.getCandlesInView()
+    const pointsToRender = this.getIndicatorDataInView()
+
+    const rightMTS = _last(candlesToRender)[0]
+    const vWidth = this.viewportWidthCandles * this.dataWidth
+    const maxP = _max(pointsToRender)
+    const minP = _min(pointsToRender)
+    const pd = maxP - minP
+
+    const rsiLinePoints = []
+
+    for (let i = 0; i < candlesToRender.length; i += 1) {
+      const d = candlesToRender[i]
+      const [mts] = d
+      const rsiY = ((pointsToRender[i] - minP) / pd) * (this.height - this.vp.size.h)
+
+      rsiLinePoints.push({
+        x: (((vWidth - (rightMTS - mts)) / vWidth) * (this.vp.size.w - (CANDLE_WIDTH_PX / 2))),
+        y: this.vp.size.h + rsiY
+      })
+    }
+
+    drawLine(this.indicatorCanvas, '#00f', rsiLinePoints)
   }
 
   renderCrosshair () {
-    const ctx = this.drawingCanvas.getContext('2d')
     const { width, height, mousePosition } = this
 
     drawLine(this.drawingCanvas, CROSSHAIR_COLOR, [

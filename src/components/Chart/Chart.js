@@ -9,6 +9,7 @@ export default class Chart extends React.Component {
     this.ohlcCanvasRef = React.createRef()
     this.axisCanvasRef = React.createRef()
     this.drawingCanvasRef = React.createRef()
+    this.indicatorCanvasRef = React.createRef()
     this.chart = null
   }
 
@@ -17,8 +18,9 @@ export default class Chart extends React.Component {
     const ohlcCanvas = this.ohlcCanvasRef.current
     const axisCanvas = this.axisCanvasRef.current
     const drawingCanvas = this.drawingCanvasRef.current
+    const indicatorCanvas = this.indicatorCanvasRef.current
 
-    if (!ohlcCanvas || !axisCanvas || !drawingCanvas) {
+    if (!ohlcCanvas || !axisCanvas || !drawingCanvas || !indicatorCanvas) {
       console.error('mounted without all canvases!')
       return
     }
@@ -34,6 +36,7 @@ export default class Chart extends React.Component {
       ohlcCanvas,
       axisCanvas,
       drawingCanvas,
+      indicatorCanvas,
       data: candles,
       dataWidth: candleWidth,
       width,
@@ -56,6 +59,12 @@ export default class Chart extends React.Component {
           width={width}
           height={height}
           ref={this.ohlcCanvasRef}
+        />
+
+        <canvas
+          width={width}
+          height={height}
+          ref={this.indicatorCanvasRef}
         />
 
         <canvas
