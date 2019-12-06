@@ -16,6 +16,7 @@ const AXIS_LABEL_MARGIN_PX = 10
 
 // TODO: refactor? testing
 const AXIS_X_TICK_COUNT = 12
+const AXIS_Y_TICK_COUNT = 8
 
 export default class BitfinexTradingChart {
   constructor ({
@@ -114,9 +115,10 @@ export default class BitfinexTradingChart {
 
     ctx.font = `${AXIS_LABEL_FONT_SIZE_PX} ${AXIS_LABEL_FONT_NAME}`
     ctx.fillStyle = AXIS_LABEL_COLOR
-    ctx.textAlign = 'center'
 
     // x
+    ctx.textAlign = 'center'
+
     drawLine(this.axisCanvas, AXIS_COLOR, [
       { x: 0, y: this.vp.size.h },
       { x: this.vp.size.w, y: this.vp.size.h }
@@ -144,10 +146,33 @@ export default class BitfinexTradingChart {
     }
 
     // y
+    ctx.textAlign = 'left'
+
     drawLine(this.axisCanvas, AXIS_COLOR, [
       { x: this.vp.size.w, y: 0 },
       { x: this.vp.size.w, y: this.vp.size.h },
     ])
+
+    const maxP = _max(candles.map(ohlc => ohlc[3]))
+    const minP = _min(candles.map(ohlc => ohlc[4]))
+    const pd = maxP - minP
+
+    const tickHeightPX = this.vp.size.h / AXIS_Y_TICK_COUNT
+    const tickHeightPrice = pd / AXIS_Y_TICK_COUNT
+
+    for (let i = 0; i < AXIS_Y_TICK_COUNT; i += 1) {
+      const y = this.vp.size.h - (tickHeightPX * i)
+      const x = this.vp.size.w + AXIS_LABEL_MARGIN_PX
+
+      // TODO: floor is temp
+      ctx.fillText(Math.floor(minP + (tickHeightPrice * i)), x, y, this.width - this.vp.size.w)
+
+      // tick
+      drawLine(this.axisCanvas, AXIS_COLOR, [
+        { x: x - 3, y: y - (AXIS_LABEL_FONT_SIZE_PX / 2) },
+        { x: this.vp.size.w, y: y - (AXIS_LABEL_FONT_SIZE_PX / 2) },
+      ])
+    }
   }
 
   renderOHLC () {
