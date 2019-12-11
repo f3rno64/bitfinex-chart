@@ -1,4 +1,5 @@
 import React from 'react'
+import HFI from 'bfx-hf-indicators'
 import Chart from './components/Chart'
 import MockCandleData from './btc_candle_data.json'
 
@@ -10,6 +11,14 @@ export default class Demo extends React.PureComponent {
     return (
       <div id="bitfinex-chart-demo__bfxc">
         <Chart
+          indicators={[
+            [HFI.EMA, [20]],
+            [HFI.EMA, [100]],
+            [HFI.RSI, [14]],
+            [HFI.ROC, [20]],
+            [HFI.Acceleration, [20]],
+          ]}
+
           candles={MockCandleData}
           candleWidth={60 * 1000}
           width={800}

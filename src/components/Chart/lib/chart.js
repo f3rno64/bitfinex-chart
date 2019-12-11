@@ -1,11 +1,15 @@
+import _isFinite from 'lodash/isFinite'
 import _last from 'lodash/last'
 import _max from 'lodash/max'
 import _min from 'lodash/min'
-import { RSI } from 'bfx-hf-indicators'
+import randomColor from 'randomcolor'
+import { Candle } from 'bfx-api-node-models'
 
 import drawLine from './draw/line'
+import dataTransformer from './data_transformer'
+import drawTransformedLineFromData from './draw/transformed_line_from_data'
 
-const CANDLE_WIDTH_PX = 10 // TODO: implement/extract into zoom
+const CANDLE_WIDTH_PX = 5 // TODO: implement/extract into zoom
 
 const CROSSHAIR_COLOR = '#666'
 
@@ -16,9 +20,17 @@ const AXIS_LABEL_FONT_NAME = 'sans-serif'
 const AXIS_LABEL_FONT_SIZE_PX = 12
 const AXIS_LABEL_MARGIN_PX = 10
 
-// TODO: refactor? testing
 const AXIS_X_TICK_COUNT = 12
 const AXIS_Y_TICK_COUNT = 8
+
+const MARGIN_BOTTOM = 25
+const AXIS_MARGIN_BOTTOM = 50
+const INDICATOR_LABEL_X = 25
+
+const RISING_CANDLE_FILL = '#0f0'
+const RISING_VOL_FILL = 'rgba(0, 255, 0, 0.3)'
+const FALLING_CANDLE_FILL = '#f00'
+const FALLING_VOL_FILL = 'rgba(255, 0, 0, 0.3)'
 
 export default class BitfinexTradingChart {
   constructor ({
@@ -29,7 +41,8 @@ export default class BitfinexTradingChart {
     width,
     height,
     data,
-    dataWidth
+    dataWidth,
+    indicators,
   }) {
     this.ohlcCanvas = ohlcCanvas
     this.axisCanvas = axisCanvas
@@ -37,16 +50,15 @@ export default class BitfinexTradingChart {
     this.indicatorCanvas = indicatorCanvas
     this.width = width
     this.height = height
-    this.data = data
     this.dataWidth = dataWidth
-    this.viewportWidthCandles = 50 // TODO: extract
+    this.viewportWidthCandles = 200 // TODO: extract
     this.isDragging = false
     this.dragStart = null
     this.mousePosition = { x: 0, y: 0 }
     this.vp = {
       pan: { x: 0, y: 0 },
       origin: { x: 0, y: 0 },
-      size: { w: width - 50.5, h: height - 200.5 }
+      size: { w: width - 50.5, h: height - MARGIN_BOTTOM - AXIS_MARGIN_BOTTOM - 0.5 }
     }
 
     this.onMouseUp = this.onMouseUp.bind(this)
@@ -57,17 +69,69 @@ export default class BitfinexTradingChart {
     this.drawingCanvas.addEventListener('mousedown', this.onMouseDown)
     this.drawingCanvas.addEventListener('mousemove', this.onMouseMove)
 
-    // TODO: TEMPORARY, only for testing
-    const rsi = new RSI([14])
+    this.indicators = indicators
+    this.externalIndicators = 0 // set in updateData()
 
-    for (let i = 0; i < data.length; i += 1) {
-      rsi.add(data[i][2]) // close
+    this.updateData(data)
+    this.clearAll()
+
+    // Add clip region for main viewport
+    const clipRegion = new Path2D()
+    const ohlcCTX = this.ohlcCanvas.getContext('2d')
+
+    clipRegion.rect(0, 0, this.vp.size.w, this.vp.size.h)
+    ohlcCTX.clip(clipRegion)
+
+    this.renderAll()
+  }
+
+  /**
+   * Updates internal candle & indicator data sets
+   *
+   * @param {Array[]} data - candle dataset
+   */
+  updateData (data = []) {
+    this.data = data
+    this.indicatorData = []
+    this.indicatorColors = []
+    this.externalIndicators = 0
+
+    const indicatorInstances = []
+
+    for (let i = 0; i < this.indicators.length; i += 1) {
+      const ind = new this.indicators[i][0](this.indicators[i][1])
+
+      if (ind.ui.position === 'external') {
+        this.externalIndicators += 1
+      }
+
+      indicatorInstances.push(ind)
+      this.indicatorColors.push(randomColor())
     }
 
-    this.rsiPoints = [ ...rsi._values ]
+    for (let i = 0; i < data.length; i += 1) {
+      for (let j = 0; j < indicatorInstances.length; j += 1) {
+        const ind = indicatorInstances[j]
 
-    this.clearAll()
-    this.renderAll()
+        if (ind.getDataType() === 'trade') {
+          continue
+        }
+
+        const c = new Candle(data[i])
+
+        if (ind.getDataKey() === '*') {
+          ind.add(c)
+        } else {
+          ind.add(c[ind.getDataKey()])
+        }
+
+        if (!this.indicatorData[j]) {
+          this.indicatorData[j] = []
+        }
+
+        this.indicatorData[j].push(_isFinite(ind.v()) ? ind.v() : 0)
+      }
+    }
   }
 
   clearAll () {
@@ -83,7 +147,6 @@ export default class BitfinexTradingChart {
     ctx.clearRect(0, 0, width, height)
   }
 
-  // TODO: refactor to cache the slice on pan (called for both axis & OHLC)
   getCandlesInView () {
     const panX = this.vp.pan.x + this.vp.origin.x
     const candlePanOffset = panX > 0 ? Math.floor(panX / CANDLE_WIDTH_PX) : 0
@@ -94,15 +157,19 @@ export default class BitfinexTradingChart {
     )
   }
 
-  // TODO: REMOVE! Only for testing indicator rendering techniques
   getIndicatorDataInView () {
     const panX = this.vp.pan.x + this.vp.origin.x
     const candlePanOffset = panX > 0 ? Math.floor(panX / CANDLE_WIDTH_PX) : 0
+    const dataInView = []
 
-    return this.rsiPoints.slice(
-      this.rsiPoints.length - 1 - this.viewportWidthCandles - candlePanOffset,
-      this.rsiPoints.length - 1 - candlePanOffset
-    )
+    for (let i = 0; i < this.indicatorData.length; i += 1) {
+      dataInView.push(this.indicatorData[i].slice(
+        this.indicatorData[i].length - 1 - this.viewportWidthCandles - candlePanOffset,
+        this.indicatorData[i].length - 1 - candlePanOffset
+      ))
+    }
+
+    return dataInView
   }
 
   renderAll () {
@@ -111,32 +178,130 @@ export default class BitfinexTradingChart {
     this.renderAxis()
   }
 
-  // TODO: ONLY FOR TESTING!
   renderIndicators () {
-    const ctx = this.ohlcCanvas.getContext('2d')
-    const candlesToRender = this.getCandlesInView()
-    const pointsToRender = this.getIndicatorDataInView()
+    const indicatorData = this.getIndicatorDataInView()
+    let currentExtSlot = 0
 
+    for (let i = 0; i < this.indicators.length; i += 1) {
+      const color = this.indicatorColors[i]
+      const indicator = this.indicators[i]
+      const data = indicatorData[i]
+      const iClass = indicator[0]
+      const { ui } = iClass
+      const { position, type } = ui
+
+      if (position === 'external') {
+        if (type === 'rsi') {
+          this.renderRSIIndicator(indicator, data, color, currentExtSlot++)
+        } else if (type === 'line') {
+          this.renderExternalLineIndicator(indicator, data, color, currentExtSlot++)
+        }
+      } else if (position === 'overlay') {
+        if (type === 'line') {
+          this.renderOverlayLineIndicator(indicator, data, color)
+        }
+      }
+    }
+  }
+
+  renderRSIIndicator (indicator, data, color, exSlot) {
+    const iInstance = new indicator[0](indicator[1])
+    const candlesToRender = this.getCandlesInView()
+    const vpHeight = this.getOHLCVPHeight()
+    const slotHeight = (this.vp.size.h - vpHeight) / this.externalIndicators
+    const slotY = vpHeight + (slotHeight * exSlot) + AXIS_MARGIN_BOTTOM
     const rightMTS = _last(candlesToRender)[0]
     const vWidth = this.viewportWidthCandles * this.dataWidth
-    const maxP = _max(pointsToRender)
-    const minP = _min(pointsToRender)
-    const pd = maxP - minP
+    const transformer = dataTransformer(data, vWidth, rightMTS)
 
-    const rsiLinePoints = []
+    drawTransformedLineFromData(this.indicatorCanvas, color, transformer, {
+      yData: data,
+      xData: candlesToRender.map(c => c[0]),
+
+      ySize: slotHeight,
+      xSize: this.vp.size.w - (CANDLE_WIDTH_PX / 2),
+
+      yOffset: slotHeight + slotY,
+      xOffset: 0,
+    })
+
+    this.renderExternalSlotMeta(transformer, iInstance.getName(), [30, 70], exSlot)
+  }
+
+  renderExternalLineIndicator (indicator, data, color, exSlot) {
+    const iInstance = new indicator[0](indicator[1])
+    const candlesToRender = this.getCandlesInView()
+    const vpHeight = this.getOHLCVPHeight()
+    const slotHeight = (this.vp.size.h - vpHeight) / this.externalIndicators
+    const slotY = vpHeight + (slotHeight * exSlot) + AXIS_MARGIN_BOTTOM
+    const rightMTS = _last(candlesToRender)[0]
+    const vWidth = this.viewportWidthCandles * this.dataWidth
+    const transformer = dataTransformer(data, vWidth, rightMTS)
+
+    drawTransformedLineFromData(this.indicatorCanvas, color, transformer, {
+      yData: data,
+      xData: candlesToRender.map(c => c[0]),
+
+      ySize: slotHeight,
+      xSize: this.vp.size.w - (CANDLE_WIDTH_PX / 2),
+
+      yOffset: slotY + slotHeight,
+      xOffset: 0,
+    })
+
+    this.renderExternalSlotMeta(transformer, iInstance.getName(), [0], exSlot)
+  }
+
+  renderExternalSlotLabel (label, exSlot) {
+    const ctx = this.indicatorCanvas.getContext('2d')
+    const vpHeight = this.getOHLCVPHeight()
+    const slotHeight = (this.vp.size.h - vpHeight) / this.externalIndicators
+
+    ctx.fillStyle = '#fff'
+    ctx.textAlign = 'left'
+    ctx.fillText(label, INDICATOR_LABEL_X, vpHeight + (slotHeight * exSlot) + AXIS_MARGIN_BOTTOM)
+  }
+
+  renderExternalSlotMeta (transformer, label, xAxes, exSlot) {
+    const vpHeight = this.getOHLCVPHeight()
+    const slotHeight = (this.vp.size.h - vpHeight) / this.externalIndicators
+    const slotY = vpHeight + (slotHeight * exSlot) + AXIS_MARGIN_BOTTOM
+    const ctx = this.indicatorCanvas.getContext('2d')
+
+    this.renderExternalSlotLabel(label, exSlot)
+
+    for (let i = 0; i < xAxes.length; i += 1) {
+      const axis = xAxes[i]
+      const axisY = transformer.y(axis, slotHeight)
+
+      this.drawHorizontalVPLine(this.indicatorCanvas, AXIS_COLOR, slotY + slotHeight - axisY)
+
+      ctx.fillStyle = '#fff'
+      ctx.textAlign = 'left'
+      ctx.fillText(axis, this.vp.size.w + 5, slotY + slotHeight - axisY + 3)
+    }
+  }
+
+  renderOverlayLineIndicator (indicator, data, color) {
+    const candlesToRender = this.getCandlesInView()
+    const vpHeight = this.getOHLCVPHeight()
+    const rightMTS = _last(candlesToRender)[0]
+    const vWidth = this.viewportWidthCandles * this.dataWidth
+    const maxP = _max(candlesToRender.map(ohlc => ohlc[3]))
+    const minP = _min(candlesToRender.map(ohlc => ohlc[4]))
+    const pd = maxP - minP
+    const linePoints = []
 
     for (let i = 0; i < candlesToRender.length; i += 1) {
       const d = candlesToRender[i]
       const [mts] = d
-      const rsiY = ((pointsToRender[i] - minP) / pd) * (this.height - this.vp.size.h)
+      const y = ((data[i] - minP) / pd) * (vpHeight)
+      const x = (((vWidth - (rightMTS - mts)) / vWidth) * (this.vp.size.w - (CANDLE_WIDTH_PX / 2)))
 
-      rsiLinePoints.push({
-        x: (((vWidth - (rightMTS - mts)) / vWidth) * (this.vp.size.w - (CANDLE_WIDTH_PX / 2))),
-        y: this.vp.size.h + rsiY
-      })
+      linePoints.push({ x, y: vpHeight - y })
     }
 
-    drawLine(this.indicatorCanvas, '#00f', rsiLinePoints)
+    drawLine(this.ohlcCanvas, color, linePoints)
   }
 
   renderCrosshair () {
@@ -157,10 +322,18 @@ export default class BitfinexTradingChart {
     this.renderCrosshair()
   }
 
+  drawHorizontalVPLine (canvas, color, y) {
+    drawLine(canvas, color, [
+      { x: 0, y },
+      { x: this.vp.size.w, y }
+    ])
+  }
+
   renderAxis () {
     const ctx = this.axisCanvas.getContext('2d')
     const candles = this.getCandlesInView()
     const vWidth = this.viewportWidthCandles * this.dataWidth
+    const vpHeight = this.getOHLCVPHeight()
 
     ctx.font = `${AXIS_LABEL_FONT_SIZE_PX} ${AXIS_LABEL_FONT_NAME}`
     ctx.fillStyle = AXIS_LABEL_COLOR
@@ -169,8 +342,8 @@ export default class BitfinexTradingChart {
     ctx.textAlign = 'center'
 
     drawLine(this.axisCanvas, AXIS_COLOR, [
-      { x: 0, y: this.vp.size.h },
-      { x: this.vp.size.w, y: this.vp.size.h }
+      { x: 0, y: vpHeight },
+      { x: this.vp.size.w, y: vpHeight }
     ])
 
     const rightMTS = _last(candles)[0]
@@ -182,7 +355,7 @@ export default class BitfinexTradingChart {
     for (let i = 0; i < AXIS_X_TICK_COUNT; i += 1) {
       const mts = (tickWidthMTS * i) + leftMTS
       const x = (((vWidth - (rightMTS - mts)) / vWidth) * this.vp.size.w)
-      const y = this.vp.size.h + AXIS_LABEL_FONT_SIZE_PX + AXIS_LABEL_MARGIN_PX
+      const y = vpHeight + AXIS_LABEL_FONT_SIZE_PX + AXIS_LABEL_MARGIN_PX
 
       // TODO: scale rendering min/h/etc
       ctx.fillText(new Date(mts).getMinutes(), x, y, tickWidthPX)
@@ -199,7 +372,7 @@ export default class BitfinexTradingChart {
 
     drawLine(this.axisCanvas, AXIS_COLOR, [
       { x: this.vp.size.w, y: 0 },
-      { x: this.vp.size.w, y: this.vp.size.h },
+      { x: this.vp.size.w, y: this.height },
     ])
 
     const maxP = _max(candles.map(ohlc => ohlc[3]))
@@ -210,10 +383,9 @@ export default class BitfinexTradingChart {
     const tickHeightPrice = pd / AXIS_Y_TICK_COUNT
 
     for (let i = 0; i < AXIS_Y_TICK_COUNT; i += 1) {
-      const y = this.vp.size.h - (tickHeightPX * i)
+      const y = vpHeight - (tickHeightPX * i)
       const x = this.vp.size.w + AXIS_LABEL_MARGIN_PX
 
-      // TODO: floor is temp
       ctx.fillText(Math.floor(minP + (tickHeightPrice * i)), x, y, this.width - this.vp.size.w)
 
       // tick
@@ -224,12 +396,18 @@ export default class BitfinexTradingChart {
     }
   }
 
+  getOHLCVPHeight ()  {
+    return this.vp.size.h - _min([this.vp.size.h / 2, this.externalIndicators * 100])
+  }
+
   renderOHLC () {
     const ctx = this.ohlcCanvas.getContext('2d')
     const candlesToRender = this.getCandlesInView()
 
+    const vpHeight = this.getOHLCVPHeight()
     const rightMTS = _last(candlesToRender)[0]
     const vWidth = this.viewportWidthCandles * this.dataWidth
+    const maxVol = _max(candlesToRender.map(ohlc => ohlc[5]))
     const maxP = _max(candlesToRender.map(ohlc => ohlc[3]))
     const minP = _min(candlesToRender.map(ohlc => ohlc[4]))
     const pd = maxP - minP
@@ -238,16 +416,16 @@ export default class BitfinexTradingChart {
       const d = candlesToRender[i]
       const [mts, o, c, h, l, v] = d
 
-      const oPX = ((o - minP) / pd) * this.vp.size.h
-      const hPX = ((h - minP) / pd) * this.vp.size.h
-      const lPX = ((l - minP) / pd) * this.vp.size.h
-      const cPX = ((c - minP) / pd) * this.vp.size.h
+      const oPX = ((o - minP) / pd) * vpHeight
+      const hPX = ((h - minP) / pd) * vpHeight
+      const lPX = ((l - minP) / pd) * vpHeight
+      const cPX = ((c - minP) / pd) * vpHeight
 
       const x = (((vWidth - (rightMTS - mts)) / vWidth) * (this.vp.size.w - (CANDLE_WIDTH_PX / 2)))
-      const y = this.vp.size.h - _max([oPX, cPX])
+      const y = vpHeight - _max([oPX, cPX])
 
-      ctx.fillStyle = c >= o ? '#0f0' : '#f00'
-      ctx.strokeStyle = c >= o ? '#0f0' : '#f00'
+      ctx.fillStyle = c >= o ? RISING_CANDLE_FILL : FALLING_CANDLE_FILL
+      ctx.strokeStyle = ctx.fillStyle
 
       // body
       ctx.fillRect(
@@ -259,16 +437,28 @@ export default class BitfinexTradingChart {
 
       // wicks
       ctx.beginPath()
-      ctx.moveTo(x, this.vp.size.h - _max([oPX, cPX]))
-      ctx.lineTo(x, this.vp.size.h - hPX)
+      ctx.moveTo(x, vpHeight - _max([oPX, cPX]))
+      ctx.lineTo(x, vpHeight - hPX)
       ctx.stroke()
       ctx.closePath()
 
       ctx.beginPath()
-      ctx.moveTo(x, this.vp.size.h - _min([oPX, cPX]))
-      ctx.lineTo(x, this.vp.size.h - lPX)
+      ctx.moveTo(x, vpHeight - _min([oPX, cPX]))
+      ctx.lineTo(x, vpHeight - lPX)
       ctx.stroke()
       ctx.closePath()
+
+      // volume
+      ctx.fillStyle = c >= o
+        ? RISING_VOL_FILL
+        : FALLING_VOL_FILL
+
+      ctx.fillRect(
+        x - (CANDLE_WIDTH_PX / 2),
+        vpHeight,
+        CANDLE_WIDTH_PX,
+        -((v / maxVol) * vpHeight)
+      )
     }
   }
 

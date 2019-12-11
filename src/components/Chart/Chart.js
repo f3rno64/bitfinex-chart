@@ -30,13 +30,14 @@ export default class Chart extends React.Component {
       return
     }
 
-    const { candles, candleWidth } = this.props
+    const { indicators, candles, candleWidth } = this.props
 
     this.chart = new ChartLib({
       ohlcCanvas,
       axisCanvas,
       drawingCanvas,
       indicatorCanvas,
+      indicators,
       data: candles,
       dataWidth: candleWidth,
       width,
@@ -48,7 +49,16 @@ export default class Chart extends React.Component {
     const { width, height } = this.props
 
     return (
-      <div className='bfxc__wrapper' style={{ width, height }}>
+      <div
+        className='bfxc__wrapper'
+        style={{
+          width: `${width + 32}px`,
+          height: `${height + 32}px`,
+        }}
+      >
+        <div className='bfxc__bg' style={{ width, height }} />
+        <div className='bfxc__topbar'></div>
+        <div className='bfxc__sidebar'></div>
         <canvas
           width={width}
           height={height}
