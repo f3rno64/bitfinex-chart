@@ -1,9 +1,12 @@
+import _isFunction from 'lodash/isFunction'
 import _isFinite from 'lodash/isFinite'
 import _last from 'lodash/last'
 import _max from 'lodash/max'
 import _min from 'lodash/min'
 import randomColor from 'randomcolor'
+import moment from 'moment'
 import { Candle } from 'bfx-api-node-models'
+import { TIME_FRAME_WIDTHS } from 'bfx-hf-util'
 
 import drawLine from './draw/line'
 import dataTransformer from './data_transformer'
@@ -43,6 +46,7 @@ export default class BitfinexTradingChart {
     data,
     dataWidth,
     indicators,
+    onLoadMoreCB,
   }) {
     this.ohlcCanvas = ohlcCanvas
     this.axisCanvas = axisCanvas
@@ -51,6 +55,7 @@ export default class BitfinexTradingChart {
     this.width = width
     this.height = height
     this.dataWidth = dataWidth
+    this.onLoadMoreCB = onLoadMoreCB
     this.viewportWidthCandles = 200 // TODO: extract
     this.isDragging = false
     this.dragStart = null
@@ -132,6 +137,19 @@ export default class BitfinexTradingChart {
         this.indicatorData[j].push(_isFinite(ind.v()) ? ind.v() : 0)
       }
     }
+
+    this.clearAll()
+    this.renderAll()
+  }
+
+  updateDimensions (width, height) {
+    this.width = width
+    this.height = height
+    this.vp.size.w = width - 50.5
+    this.vp.size.h = height - MARGIN_BOTTOM - AXIS_MARGIN_BOTTOM - 0.5
+
+    this.clearAll()
+    this.renderAll()
   }
 
   clearAll () {
@@ -150,11 +168,10 @@ export default class BitfinexTradingChart {
   getCandlesInView () {
     const panX = this.vp.pan.x + this.vp.origin.x
     const candlePanOffset = panX > 0 ? Math.floor(panX / CANDLE_WIDTH_PX) : 0
+    const start = this.data.length - 1 - this.viewportWidthCandles - candlePanOffset
+    const end = this.data.length - 1 - candlePanOffset
 
-    return this.data.slice(
-      this.data.length - 1 - this.viewportWidthCandles - candlePanOffset,
-      this.data.length - 1 - candlePanOffset
-    )
+    return this.data.slice(_max([0, start]), end)
   }
 
   getIndicatorDataInView () {
@@ -163,10 +180,10 @@ export default class BitfinexTradingChart {
     const dataInView = []
 
     for (let i = 0; i < this.indicatorData.length; i += 1) {
-      dataInView.push(this.indicatorData[i].slice(
-        this.indicatorData[i].length - 1 - this.viewportWidthCandles - candlePanOffset,
-        this.indicatorData[i].length - 1 - candlePanOffset
-      ))
+      const start = this.indicatorData[i].length - 1 - this.viewportWidthCandles - candlePanOffset
+      const end = this.indicatorData[i].length - 1 - candlePanOffset
+
+      dataInView.push(this.indicatorData[i].slice(_max([0, start]), end))
     }
 
     return dataInView
@@ -316,6 +333,20 @@ export default class BitfinexTradingChart {
       { x: mousePosition.x + 0.5, y: 0 },
       { x: mousePosition.x + 0.5, y: height },
     ])
+
+    const ctx = this.drawingCanvas.getContext('2d')
+    const candlesInView = this.getCandlesInView()
+    const rightMTS = _last(candlesInView)[0]
+    const leftMTS = candlesInView[0][0]
+    const mtsPerPX = (rightMTS - leftMTS) / this.vp.size.w
+    const label = new Date(Math.floor(leftMTS + (mtsPerPX * mousePosition.x))).toLocaleString()
+    const labelWidth = ctx.measureText(label).width
+
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#ccc'
+    ctx.fillRect(mousePosition.x - (labelWidth / 2), height - 17, labelWidth, 14)
+    ctx.fillStyle = '#000'
+    ctx.fillText(label, mousePosition.x, height - 5)
   }
 
   renderDrawings () {
@@ -351,14 +382,46 @@ export default class BitfinexTradingChart {
     const rangeLengthMTS = rightMTS - leftMTS
     const tickWidthMTS = Math.floor(rangeLengthMTS / AXIS_X_TICK_COUNT)
     const tickWidthPX = this.vp.size.w / AXIS_X_TICK_COUNT
+    let ticks = []
+
+    let tickDivisor = 60 * 1000 // 1min by default, overriden below
+    const dayCount = rangeLengthMTS / TIME_FRAME_WIDTHS['1D']
+
+    if (dayCount > 1 && dayCount < AXIS_X_TICK_COUNT) {
+      tickDivisor = 24 * 60 * 60 * 1000
+    } else {
+      const hourCount = rangeLengthMTS / TIME_FRAME_WIDTHS['1h']
+
+      if (hourCount > 1 && hourCount < AXIS_X_TICK_COUNT) {
+        tickDivisor = 60 * 60 * 1000
+      }
+    }
+
+    const paddedLeftMTS = leftMTS - (leftMTS % tickDivisor)
 
     for (let i = 0; i < AXIS_X_TICK_COUNT; i += 1) {
-      const mts = (tickWidthMTS * i) + leftMTS
+      ticks.push(paddedLeftMTS + (i * tickDivisor))
+
+      if (paddedLeftMTS + ((i + 1) * tickDivisor) > rightMTS) {
+        break
+      }
+    }
+
+    for (let i = 0; i < AXIS_X_TICK_COUNT; i += 1) {
+      const mts = ticks[i] // (tickWidthMTS * i) + leftMTS
       const x = (((vWidth - (rightMTS - mts)) / vWidth) * this.vp.size.w)
       const y = vpHeight + AXIS_LABEL_FONT_SIZE_PX + AXIS_LABEL_MARGIN_PX
+      const date = new Date(mts)
+      let label
 
-      // TODO: scale rendering min/h/etc
-      ctx.fillText(new Date(mts).getMinutes(), x, y, tickWidthPX)
+      // TODO: wip
+      if (date.getHours() === 0) {
+        label = `${date.getHours()}:${date.getMinutes()}`
+      } else {
+        label = moment(date).format('HH:mm')
+      }
+
+      ctx.fillText(label, x, y, tickWidthPX)
 
       // tick
       drawLine(this.axisCanvas, AXIS_TICK_COLOR, [
@@ -424,6 +487,18 @@ export default class BitfinexTradingChart {
       const x = (((vWidth - (rightMTS - mts)) / vWidth) * (this.vp.size.w - (CANDLE_WIDTH_PX / 2)))
       const y = vpHeight - _max([oPX, cPX])
 
+      // volume
+      ctx.fillStyle = c >= o
+        ? RISING_VOL_FILL
+        : FALLING_VOL_FILL
+
+      ctx.fillRect(
+        x - (CANDLE_WIDTH_PX / 2),
+        vpHeight,
+        CANDLE_WIDTH_PX,
+        -((v / maxVol) * vpHeight)
+      )
+
       ctx.fillStyle = c >= o ? RISING_CANDLE_FILL : FALLING_CANDLE_FILL
       ctx.strokeStyle = ctx.fillStyle
 
@@ -447,18 +522,6 @@ export default class BitfinexTradingChart {
       ctx.lineTo(x, vpHeight - lPX)
       ctx.stroke()
       ctx.closePath()
-
-      // volume
-      ctx.fillStyle = c >= o
-        ? RISING_VOL_FILL
-        : FALLING_VOL_FILL
-
-      ctx.fillRect(
-        x - (CANDLE_WIDTH_PX / 2),
-        vpHeight,
-        CANDLE_WIDTH_PX,
-        -((v / maxVol) * vpHeight)
-      )
     }
   }
 
@@ -492,6 +555,15 @@ export default class BitfinexTradingChart {
       this.vp.pan.x = e.pageX - this.dragStart.x
       this.clearAll()
       this.renderAll()
+
+      if (_isFunction(this.onLoadMoreCB)) {
+        const panX = this.vp.pan.x + this.vp.origin.x
+        const candlePanOffset = panX > 0 ? Math.floor(panX / CANDLE_WIDTH_PX) : 0
+
+        if (candlePanOffset + this.viewportWidthCandles > this.data.length) {
+          this.onLoadMoreCB(this.viewportWidthCandles)
+        }
+      }
     } else {
       this.clear(this.drawingCanvas, 'rgba(0, 0, 0, 0)')
       this.renderDrawings()

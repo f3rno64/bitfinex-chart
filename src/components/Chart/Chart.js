@@ -14,7 +14,7 @@ export default class Chart extends React.Component {
   }
 
   componentDidMount () {
-    const { width, height } = this.props
+    const { width, height, onLoadMore } = this.props
     const ohlcCanvas = this.ohlcCanvasRef.current
     const axisCanvas = this.axisCanvasRef.current
     const drawingCanvas = this.drawingCanvasRef.current
@@ -38,11 +38,24 @@ export default class Chart extends React.Component {
       drawingCanvas,
       indicatorCanvas,
       indicators,
+      onLoadMoreCB: onLoadMore,
       data: candles,
       dataWidth: candleWidth,
       width,
       height,
     })
+  }
+
+  componentDidUpdate (prevProps) {
+    const { candles, width, height } = this.props
+
+    if (candles !== prevProps.candles) {
+      this.chart.updateData(candles)
+    }
+
+    if (width !== prevProps.width || height !== prevProps.height) {
+      this.chart.updateDimensions(width, height)
+    }
   }
 
   render () {

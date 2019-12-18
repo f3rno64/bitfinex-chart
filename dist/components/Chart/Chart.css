@@ -1,0 +1,36 @@
+.bfxc__wrapper {
+  position: relative;
+}
+
+.bfxc__wrapper canvas {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+}
+
+.bfxc__bg {
+  background: #000;
+  position: absolute;
+  top: 32px;
+  left: 32px;
+}
+
+.bfxc__topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  height: 32px;
+  width: 100%;
+  background: red;
+}
+
+.bfxc__sidebar {
+  position: absolute;
+  top: 32px;
+  left: 0;
+
+  height: calc(100% - 32px);
+  width: 32px;
+  background: blue;
+}
