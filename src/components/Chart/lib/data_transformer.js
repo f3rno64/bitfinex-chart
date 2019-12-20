@@ -15,13 +15,43 @@ export default function (data, vWidth, rightMTS) {
   const minP = _min(data)
   const pd = maxP - minP
 
-  const x = (dX, targetWidth) => {
-    return ((vWidth - (rightMTS - dX)) / vWidth) * targetWidth
+  let defaultTargetWidth
+  let defaultTargetHeight
+  let defaultYModifier = y => y
+  let defaultXModifier = x => x
+
+  const x = (dX, targetWidth = defaultTargetWidth) => {
+    return defaultXModifier(((vWidth - (rightMTS - dX)) / vWidth) * targetWidth)
   }
 
-  const y = (dY, targetHeight) => {
-    return ((dY - minP) / pd) * targetHeight
+  const y = (dY, targetHeight = defaultTargetHeight) => {
+    return defaultYModifier(((dY - minP) / pd) * targetHeight)
   }
 
-  return { x, y }
+  const point = (p) => {
+    return {
+      x: x(p.mts),
+      y: y(p.price),
+    }
+  }
+
+  const setTargetWidth = (targetWidth) => {
+    defaultTargetWidth = targetWidth
+  }
+
+  const setTargetHeight = (targetHeight) => {
+    defaultTargetHeight = targetHeight
+  }
+
+  const setYModifier = (cb) => {
+    defaultYModifier = cb
+  }
+
+  const setXModifier = (cb) => {
+    defaultXModifier = cb
+  }
+
+  return {
+    x, y, point, setTargetWidth, setTargetHeight, setYModifier, setXModifier
+  }
 }

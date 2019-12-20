@@ -10,6 +10,7 @@ export default class Chart extends React.Component {
     this.axisCanvasRef = React.createRef()
     this.drawingCanvasRef = React.createRef()
     this.indicatorCanvasRef = React.createRef()
+    this.crosshairCanvasRef = React.createRef()
     this.chart = null
   }
 
@@ -19,8 +20,12 @@ export default class Chart extends React.Component {
     const axisCanvas = this.axisCanvasRef.current
     const drawingCanvas = this.drawingCanvasRef.current
     const indicatorCanvas = this.indicatorCanvasRef.current
+    const crosshairCanvas = this.crosshairCanvasRef.current
 
-    if (!ohlcCanvas || !axisCanvas || !drawingCanvas || !indicatorCanvas) {
+    if (
+      !ohlcCanvas || !axisCanvas || !drawingCanvas || !indicatorCanvas ||
+      !crosshairCanvas
+    ) {
       console.error('mounted without all canvases!')
       return
     }
@@ -37,6 +42,7 @@ export default class Chart extends React.Component {
       axisCanvas,
       drawingCanvas,
       indicatorCanvas,
+      crosshairCanvas,
       indicators,
       onLoadMoreCB: onLoadMore,
       data: candles,
@@ -94,6 +100,12 @@ export default class Chart extends React.Component {
           width={width}
           height={height}
           ref={this.drawingCanvasRef}
+        />
+
+        <canvas
+          width={width}
+          height={height}
+          ref={this.crosshairCanvasRef}
         />
       </div>
     )

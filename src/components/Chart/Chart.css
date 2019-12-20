@@ -22,7 +22,7 @@
 
   height: 32px;
   width: 100%;
-  background: red;
+  background: #102331;
 }
 
 .bfxc__sidebar {
@@ -32,5 +32,5 @@
 
   height: calc(100% - 32px);
   width: 32px;
-  background: blue;
+  background: #102331;
 }
