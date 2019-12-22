@@ -4,15 +4,15 @@
 
 .bfxc__wrapper canvas {
   position: absolute;
-  top: 32px;
-  left: 32px;
+  top: 90px;
+  left: 0;
 }
 
 .bfxc__bg {
   background: #000;
   position: absolute;
-  top: 32px;
-  left: 32px;
+  top: 90px;
+  left: 0;
 }
 
 .bfxc__topbar {
@@ -20,17 +20,77 @@
   top: 0;
   left: 0;
 
-  height: 32px;
+  height: 45px;
   width: 100%;
-  background: #102331;
+  background: #000;
+
+  display: flex;
+  flex-direction: row;
+
+  line-height: 45px;
 }
 
-.bfxc__sidebar {
+.bfxc__topbar > *:first-child {
+  margin-left: 11px;
+}
+
+.bfxcs__topbar-market {
+  font-size: 15px;
+  text-transform: uppercase;
+  margin-right: 16px;
+}
+
+.bfxcs__topbar-section {
+  border-right: 1px solid #2a2e39;
+}
+
+.bfxcs__topbar-ohlc {
+  width: 350px
+}
+
+.bfxcs__topbar-tfs p,
+.bfxcs__topbar-ohlc-entry,
+.bfxcs__topbar-ohlc-entry p {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.bfxcs__topbar-ohlc-entry {
+  margin-right: 16px;
+  font-size: 11px;
+}
+
+.bfxcs__topbar-ohlc-entry p:first-child {
+  margin-right: 4px;
+}
+
+.bfxcs__topbar-ohlc-entry p:last-child {
+  color: #54b361;
+}
+
+.bfxcs__topbar-tfs p {
+  margin: 0 8px;
+  font-size: 11px;
+  color: #6b7b8b;
+}
+
+.bfxcs__topbar-tfs p.active {
+  color: #54b361;
+}
+
+.bfxcs__topbar-tfs p:hover {
+  cursor: pointer;
+}
+
+.bfxc__toolbar {
   position: absolute;
-  top: 32px;
+  top: 45px;
   left: 0;
 
-  height: calc(100% - 32px);
-  width: 32px;
-  background: #102331;
+  height: 43px;
+  width: 100%;
+  background: #131313;
+
+  border-top: 1px solid #2a2e39;
+  border-bottom: 1px solid #2a2e39;
 }

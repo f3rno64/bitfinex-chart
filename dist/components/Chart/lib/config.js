@@ -5,24 +5,21 @@ const CONFIG = {
   AXIS_LABEL_FONT_NAME: 'sans-serif',
   AXIS_LABEL_FONT_SIZE_PX: 12,
   AXIS_LABEL_MARGIN_PX: 10,
-
   AXIS_X_TICK_COUNT: 12,
   AXIS_Y_TICK_COUNT: 8,
   AXIS_MARGIN_BOTTOM: 50,
-
   CANDLE_WIDTH_PX: 5,
   CROSSHAIR_COLOR: '#666',
   MARGIN_BOTTOM: 25,
   INDICATOR_LABEL_X: 25,
-
   TRADE_MARKER_RADIUS_PX: 5,
   TRADE_MARKER_BUY_COLOR: '#0f0',
-  TRADE_MARKER_SELL_COLOR: '#f00',
-}
+  TRADE_MARKER_SELL_COLOR: '#f00'
+};
 
 const set = (key, value) => {
-  CONFIG[key] = value
-}
+  CONFIG[key] = value;
+};
 
-export default CONFIG
-export { set }
+export default CONFIG;
+export { set };

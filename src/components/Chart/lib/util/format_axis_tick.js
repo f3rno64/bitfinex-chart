@@ -1,6 +1,6 @@
 
 export default (tick) => {
-  return tick.toLocaleString('en-US', {
+  return +(tick.toPrecision(8).toLocaleString('en-US', {
     maximumFractionDigits: 8,
-  })
+  }))
 }

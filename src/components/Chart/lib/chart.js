@@ -5,6 +5,7 @@ import _max from 'lodash/max'
 import _min from 'lodash/min'
 import randomColor from 'randomcolor'
 import { Candle } from 'bfx-api-node-models'
+import { TIME_FRAME_WIDTHS } from 'bfx-hf-util'
 
 import formatAxisTick from './util/format_axis_tick'
 import drawLine from './draw/line'
@@ -14,18 +15,23 @@ import drawOHLCSeries from './draw/ohlc_series'
 import drawXAxis from './draw/x_axis'
 import drawYAxis from './draw/y_axis'
 
-import {
+import LineDrawing from './drawings/line'
+// import HorizontalLineDrawing from './drawings/horizontal_line'
+// import VerticalLineDrawing from './drawings/vertical_line'
+
+import CONFIG, { set as setConfig } from './config'
+
+const {
   CANDLE_WIDTH_PX,
   CROSSHAIR_COLOR,
   AXIS_COLOR,
   AXIS_MARGIN_BOTTOM,
   MARGIN_BOTTOM,
   INDICATOR_LABEL_X,
-} from './config'
-
-import LineDrawing from './drawings/line'
-// import HorizontalLineDrawing from './drawings/horizontal_line'
-// import VerticalLineDrawing from './drawings/vertical_line'
+  TRADE_MARKER_BUY_COLOR,
+  TRADE_MARKER_SELL_COLOR,
+  TRADE_MARKER_RADIUS_PX,
+} = CONFIG
 
 export default class BitfinexTradingChart {
   constructor ({
@@ -36,11 +42,19 @@ export default class BitfinexTradingChart {
     crosshairCanvas,
     width,
     height,
+    trades = [],
     data,
     dataWidth,
-    indicators,
+    indicators = [],
     onLoadMoreCB,
+    onHoveredCandleCB,
+    config = {},
   }) {
+
+    Object.keys(config).forEach(key => {
+      setConfig(key, config[key])
+    })
+
     this.ohlcCanvas = ohlcCanvas
     this.axisCanvas = axisCanvas
     this.drawingCanvas = drawingCanvas
@@ -48,8 +62,10 @@ export default class BitfinexTradingChart {
     this.crosshairCanvas = crosshairCanvas
     this.width = width
     this.height = height
-    this.dataWidth = dataWidth
+    this.trades = trades
+    this.dataWidth = TIME_FRAME_WIDTHS[dataWidth]
     this.onLoadMoreCB = onLoadMoreCB
+    this.onHoveredCandleCB = onHoveredCandleCB
     this.viewportWidthCandles = 200 // TODO: extract
     this.isDragging = false
     this.dragStart = null
@@ -63,15 +79,19 @@ export default class BitfinexTradingChart {
     this.onMouseUp = this.onMouseUp.bind(this)
     this.onMouseDown = this.onMouseDown.bind(this)
     this.onMouseMove = this.onMouseMove.bind(this)
+    this.onMouseLeave = this.onMouseLeave.bind(this)
 
     this.crosshairCanvas.addEventListener('mouseup', this.onMouseUp)
     this.crosshairCanvas.addEventListener('mousedown', this.onMouseDown)
     this.crosshairCanvas.addEventListener('mousemove', this.onMouseMove)
+    this.crosshairCanvas.addEventListener('mouseleave', this.onMouseLeave)
 
     // TODO: Refactor; this is experimental, mode data should be set on tool select
-    const testDrawing = new LineDrawing(this)
-    this.activeDrawing = testDrawing
-    this.drawings = [testDrawing]
+    // const testDrawing = new LineDrawing(this)
+    // this.activeDrawing = testDrawing
+    // this.drawings = [testDrawing]
+    this.activeDrawing = null
+    this.drawings = []
 
     this.indicators = indicators
     this.externalIndicators = 0 // set in updateData()
@@ -90,6 +110,12 @@ export default class BitfinexTradingChart {
     ohlcCTX.clip(clipRegion)
     drawingCTX.clip(clipRegion)
 
+    this.renderAll()
+  }
+
+  updateTrades (trades = []) {
+    this.trades = trades
+    this.clearAll()
     this.renderAll()
   }
 
@@ -195,12 +221,17 @@ export default class BitfinexTradingChart {
 
   renderAll () {
     this.renderOHLC()
+    this.renderTrades()
     this.renderIndicators()
     this.renderAxis()
     this.renderDrawings()
   }
 
   renderIndicators () {
+    if (this.data.length < 2) {
+      return
+    }
+
     const indicatorData = this.getIndicatorDataInView()
     let currentExtSlot = 0
 
@@ -326,7 +357,14 @@ export default class BitfinexTradingChart {
     drawLine(this.ohlcCanvas, color, linePoints)
   }
 
+  /**
+   * Renders the crosshair and updates the toolbar OHLC stats
+   */
   renderCrosshair () {
+    if (this.data.length < 2) {
+      return
+    }
+
     const { width, height, mousePosition } = this
 
     drawLine(this.crosshairCanvas, CROSSHAIR_COLOR, [
@@ -344,7 +382,8 @@ export default class BitfinexTradingChart {
     const rightMTS = _last(candlesInView)[0]
     const leftMTS = candlesInView[0][0]
     const mtsPerPX = (rightMTS - leftMTS) / this.vp.size.w
-    const label = new Date(Math.floor(leftMTS + (mtsPerPX * mousePosition.x))).toLocaleString()
+    const mouseMTS = Math.floor(leftMTS + (mtsPerPX * mousePosition.x))
+    const label = new Date(mouseMTS).toLocaleString()
     const labelWidth = ctx.measureText(label).width
 
     ctx.textAlign = 'center'
@@ -352,6 +391,17 @@ export default class BitfinexTradingChart {
     ctx.fillRect(mousePosition.x - (labelWidth / 2), height - 17, labelWidth, 14)
     ctx.fillStyle = '#000'
     ctx.fillText(label, mousePosition.x, height - 5)
+
+    // Find nearest candle
+    if (this.onHoveredCandleCB) {
+      const candleDistances = candlesInView.map((c, i) => [
+        Math.abs(c[0] - mouseMTS), i
+      ])
+
+      candleDistances.sort((a, b) => a[0] - b[0])
+
+      this.onHoveredCandleCB(candlesInView[candleDistances[0][1]])
+    }
   }
 
   renderDrawings () {
@@ -403,6 +453,10 @@ export default class BitfinexTradingChart {
   }
 
   renderAxis () {
+    if (this.data.length < 2) {
+      return
+    }
+
     const candles = this.getCandlesInView()
     const vpWidth = this.viewportWidthCandles * this.dataWidth
     const vpHeight = this.getOHLCVPHeight()
@@ -416,6 +470,10 @@ export default class BitfinexTradingChart {
   }
 
   renderOHLC () {
+    if (this.data.length < 2) {
+      return
+    }
+
     const ctx = this.ohlcCanvas.getContext('2d')
     const candles = this.getCandlesInView()
     const vpHeight = this.getOHLCVPHeight()
@@ -424,11 +482,40 @@ export default class BitfinexTradingChart {
     drawOHLCSeries(ctx, candles, CANDLE_WIDTH_PX, vpWidth, vpHeight, this.vp.size.w)
   }
 
+  renderTrades () {
+    if (this.data.length === 0 || this.trades.length === 0) {
+      return
+    }
+
+    const ctx = this.ohlcCanvas.getContext('2d')
+    const transformer = this.getOHLCTransformer()
+
+    for (let i = 0; i < this.trades.length; i += 1) {
+      ctx.strokeStyle = this.trades[i].amount > 0
+        ? TRADE_MARKER_BUY_COLOR
+        : TRADE_MARKER_SELL_COLOR
+
+      ctx.beginPath()
+      ctx.arc(
+        transformer.x(this.trades[i].mts),
+        transformer.y(this.trades[i].price),
+        TRADE_MARKER_RADIUS_PX,
+        0,
+        2 * Math.PI
+      )
+      ctx.stroke()
+    }
+  }
+
   getOHLCMousePosition () {
     return {
       mts: this.getMTSForRawX(this.mousePosition.x),
       price: this.getPriceForRawY(this.mousePosition.y),
     }
+  }
+
+  onMouseLeave () {
+    this.clear(this.crosshairCanvas)
   }
 
   onMouseUp (e) {

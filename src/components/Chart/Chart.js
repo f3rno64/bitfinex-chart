@@ -1,10 +1,21 @@
 import React from 'react'
+import ClassNames from 'classnames'
+import { TIME_FRAME_WIDTHS } from 'bfx-hf-util'
 import ChartLib from './lib/chart'
+import formatAxisTick from './lib/util/format_axis_tick'
 import './Chart.css'
 
+const TOP_RESERVED_SPACE_PX = 90 // for toolbar and topbar
+
 export default class Chart extends React.Component {
+  state = {
+    hoveredCandle: null,
+  }
+
   constructor (props) {
     super(props)
+
+    this.onHoveredCandle = this.onHoveredCandle.bind(this)
 
     this.ohlcCanvasRef = React.createRef()
     this.axisCanvasRef = React.createRef()
@@ -15,7 +26,11 @@ export default class Chart extends React.Component {
   }
 
   componentDidMount () {
-    const { width, height, onLoadMore } = this.props
+    const {
+      width, height, onLoadMore, indicators, candles, candleWidth, trades,
+      config, onTimeFrameChange,
+    } = this.props
+
     const ohlcCanvas = this.ohlcCanvasRef.current
     const axisCanvas = this.axisCanvasRef.current
     const drawingCanvas = this.drawingCanvasRef.current
@@ -35,8 +50,6 @@ export default class Chart extends React.Component {
       return
     }
 
-    const { indicators, candles, candleWidth } = this.props
-
     this.chart = new ChartLib({
       ohlcCanvas,
       axisCanvas,
@@ -45,15 +58,19 @@ export default class Chart extends React.Component {
       crosshairCanvas,
       indicators,
       onLoadMoreCB: onLoadMore,
+      onTimeFrameChangeCB: onTimeFrameChange,
+      onHoveredCandleCB: this.onHoveredCandle,
       data: candles,
       dataWidth: candleWidth,
+      trades,
       width,
-      height,
+      height: height - TOP_RESERVED_SPACE_PX,
+      config,
     })
   }
 
   componentDidUpdate (prevProps) {
-    const { candles, width, height } = this.props
+    const { candles, width, height, trades } = this.props
 
     if (candles !== prevProps.candles) {
       this.chart.updateData(candles)
@@ -62,49 +79,105 @@ export default class Chart extends React.Component {
     if (width !== prevProps.width || height !== prevProps.height) {
       this.chart.updateDimensions(width, height)
     }
+
+    if (trades !== prevProps.trades) {
+      this.chart.updateTrades(trades)
+    }
+  }
+
+  onHoveredCandle (hoveredCandle) {
+    this.setState(() => ({ hoveredCandle }))
   }
 
   render () {
-    const { width, height } = this.props
+    const {
+      width, height, marketLabel, bgColor = '#000', candleWidth,
+      onTimeFrameChange
+    } = this.props
+
+    const { hoveredCandle } = this.state
+    const renderHeight = height - TOP_RESERVED_SPACE_PX
 
     return (
       <div
         className='bfxc__wrapper'
         style={{
-          width: `${width + 32}px`,
-          height: `${height + 32}px`,
+          width: `${width}px`,
+          height: `${height}px`,
         }}
       >
-        <div className='bfxc__bg' style={{ width, height }} />
-        <div className='bfxc__topbar'></div>
-        <div className='bfxc__sidebar'></div>
+        <div
+          className='bfxc__bg'
+          style={{
+            width,
+            height: renderHeight,
+            background: bgColor,
+          }}
+        />
+
+        <div className='bfxc__topbar'>
+          <p className='bfxcs__topbar-market'>
+            {marketLabel}
+          </p>
+
+          <div className='bfxcs__topbar-ohlc bfxcs__topbar-section'>
+            <div className='bfxcs__topbar-ohlc-entry'>
+              <p>O</p>
+              <p>{hoveredCandle ? formatAxisTick(hoveredCandle[1]) : '-'}</p>
+            </div>
+            <div className='bfxcs__topbar-ohlc-entry'>
+              <p>H</p>
+              <p>{hoveredCandle ? formatAxisTick(hoveredCandle[3]) : '-'}</p>
+            </div>
+            <div className='bfxcs__topbar-ohlc-entry'>
+              <p>L</p>
+              <p>{hoveredCandle ? formatAxisTick(hoveredCandle[4]) : '-'}</p>
+            </div>
+            <div className='bfxcs__topbar-ohlc-entry'>
+              <p>C</p>
+              <p>{hoveredCandle ? formatAxisTick(hoveredCandle[2]) : '-'}</p>
+            </div>
+          </div>
+
+          <div className='bfxcs__topbar-tfs bfxcs__topbar-section'>
+            {Object.keys(TIME_FRAME_WIDTHS).map(tf => (
+              <p
+                className={ClassNames({ active: tf === candleWidth })}
+                onClick={() => onTimeFrameChange && onTimeFrameChange(tf)}
+              >{tf}</p>
+            ))}
+          </div>
+        </div>
+
+        <div className='bfxc__toolbar'></div>
+
         <canvas
           width={width}
-          height={height}
+          height={renderHeight}
           ref={this.axisCanvasRef}
         />
 
         <canvas
           width={width}
-          height={height}
+          height={renderHeight}
           ref={this.ohlcCanvasRef}
         />
 
         <canvas
           width={width}
-          height={height}
+          height={renderHeight}
           ref={this.indicatorCanvasRef}
         />
 
         <canvas
           width={width}
-          height={height}
+          height={renderHeight}
           ref={this.drawingCanvasRef}
         />
 
         <canvas
           width={width}
-          height={height}
+          height={renderHeight}
           ref={this.crosshairCanvasRef}
         />
       </div>
