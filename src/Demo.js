@@ -19,10 +19,11 @@ export default class Demo extends React.PureComponent {
             [HFI.Acceleration, [20]],
           ]}
 
+          marketLabel='BTC/USD'
           candles={MockCandleData}
-          candleWidth={60 * 1000}
-          width={800}
-          height={600}
+          candleWidth='1m'
+          width={1600}
+          height={900}
         />
       </div>
     )

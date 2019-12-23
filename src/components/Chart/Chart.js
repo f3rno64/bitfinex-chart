@@ -1,6 +1,10 @@
 import React from 'react'
 import ClassNames from 'classnames'
+import Scrollbars from 'react-custom-scrollbars'
 import { TIME_FRAME_WIDTHS } from 'bfx-hf-util'
+import HFI from 'bfx-hf-indicators'
+
+import Dropdown from '../Dropdown'
 import ChartLib from './lib/chart'
 import formatAxisTick from './lib/util/format_axis_tick'
 import './Chart.css'
@@ -70,7 +74,7 @@ export default class Chart extends React.Component {
   }
 
   componentDidUpdate (prevProps) {
-    const { candles, width, height, trades } = this.props
+    const { candles, width, height, trades, indicators } = this.props
 
     if (candles !== prevProps.candles) {
       this.chart.updateData(candles)
@@ -83,6 +87,10 @@ export default class Chart extends React.Component {
     if (trades !== prevProps.trades) {
       this.chart.updateTrades(trades)
     }
+
+    if (indicators !== prevProps.indicators) {
+      this.chart.updateIndicators(indicators)
+    }
   }
 
   onHoveredCandle (hoveredCandle) {
@@ -92,7 +100,7 @@ export default class Chart extends React.Component {
   render () {
     const {
       width, height, marketLabel, bgColor = '#000', candleWidth,
-      onTimeFrameChange
+      onTimeFrameChange, onAddIndicator,
     } = this.props
 
     const { hoveredCandle } = this.state
@@ -142,10 +150,24 @@ export default class Chart extends React.Component {
           <div className='bfxcs__topbar-tfs bfxcs__topbar-section'>
             {Object.keys(TIME_FRAME_WIDTHS).map(tf => (
               <p
+                key={tf}
                 className={ClassNames({ active: tf === candleWidth })}
                 onClick={() => onTimeFrameChange && onTimeFrameChange(tf)}
               >{tf}</p>
             ))}
+          </div>
+
+          <div className='bfxc__topbar-indicators'>
+            <Dropdown label='Indicators'>
+              <ul>
+                {Object.values(HFI).filter(i => !!i.label).map(i => (
+                  <li
+                    key={i.id}
+                    onClick={() => onAddIndicator && onAddIndicator([i, i.args.map(a => a.default)])}
+                  >{i.humanLabel}</li>
+                ))}
+              </ul>
+            </Dropdown>
           </div>
         </div>
 

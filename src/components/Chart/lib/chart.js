@@ -113,6 +113,11 @@ export default class BitfinexTradingChart {
     this.renderAll()
   }
 
+  updateIndicators (indicators = []) {
+    this.indicators = indicators
+    this.updateData(this.data)
+  }
+
   updateTrades (trades = []) {
     this.trades = trades
     this.clearAll()

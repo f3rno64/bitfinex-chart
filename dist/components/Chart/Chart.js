@@ -2,7 +2,10 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 import React from 'react';
 import ClassNames from 'classnames';
+import Scrollbars from 'react-custom-scrollbars';
 import { TIME_FRAME_WIDTHS } from 'bfx-hf-util';
+import HFI from 'bfx-hf-indicators';
+import Dropdown from '../Dropdown';
 import ChartLib from './lib/chart';
 import formatAxisTick from './lib/util/format_axis_tick';
 import './Chart.css';
@@ -77,7 +80,8 @@ export default class Chart extends React.Component {
       candles,
       width,
       height,
-      trades
+      trades,
+      indicators
     } = this.props;
 
     if (candles !== prevProps.candles) {
@@ -90,6 +94,10 @@ export default class Chart extends React.Component {
 
     if (trades !== prevProps.trades) {
       this.chart.updateTrades(trades);
+    }
+
+    if (indicators !== prevProps.indicators) {
+      this.chart.updateIndicators(indicators);
     }
   }
 
@@ -106,7 +114,8 @@ export default class Chart extends React.Component {
       marketLabel,
       bgColor = '#000',
       candleWidth,
-      onTimeFrameChange
+      onTimeFrameChange,
+      onAddIndicator
     } = this.props;
     const {
       hoveredCandle
@@ -142,11 +151,19 @@ export default class Chart extends React.Component {
     }, React.createElement("p", null, "C"), React.createElement("p", null, hoveredCandle ? formatAxisTick(hoveredCandle[2]) : '-'))), React.createElement("div", {
       className: "bfxcs__topbar-tfs bfxcs__topbar-section"
     }, Object.keys(TIME_FRAME_WIDTHS).map(tf => React.createElement("p", {
+      key: tf,
       className: ClassNames({
         active: tf === candleWidth
       }),
       onClick: () => onTimeFrameChange && onTimeFrameChange(tf)
-    }, tf)))), React.createElement("div", {
+    }, tf))), React.createElement("div", {
+      className: "bfxc__topbar-indicators"
+    }, React.createElement(Dropdown, {
+      label: "Indicators"
+    }, React.createElement("ul", null, Object.values(HFI).filter(i => !!i.label).map(i => React.createElement("li", {
+      key: i.id,
+      onClick: () => onAddIndicator && onAddIndicator([i, i.args.map(a => a.default)])
+    }, i.humanLabel)))))), React.createElement("div", {
       className: "bfxc__toolbar"
     }), React.createElement("canvas", {
       width: width,

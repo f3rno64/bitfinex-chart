@@ -9,10 +9,11 @@ export default class Demo extends React.PureComponent {
       id: "bitfinex-chart-demo__bfxc"
     }, React.createElement(Chart, {
       indicators: [[HFI.EMA, [20]], [HFI.EMA, [100]], [HFI.RSI, [14]], [HFI.ROC, [20]], [HFI.Acceleration, [20]]],
+      marketLabel: "BTC/USD",
       candles: MockCandleData,
-      candleWidth: 60 * 1000,
-      width: 800,
-      height: 600
+      candleWidth: "1m",
+      width: 1600,
+      height: 900
     }));
   }
 

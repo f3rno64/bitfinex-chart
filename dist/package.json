@@ -16,14 +16,16 @@
     "moment": "^2.24.0",
     "randomcolor": "^0.5.4",
     "react": "^16.12.0",
+    "react-custom-scrollbars": "^4.2.1",
     "react-dom": "^16.12.0",
+    "react-onclickoutside": "^6.9.0",
     "react-scripts": "3.3.0"
   },
   "scripts": {
     "start": "react-scripts start",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build": "babel ./src -d ./dist && copy package.json dist"
+    "build": "babel ./src -d ./dist && cp package.json dist/ && cp src/components/Chart/Chart.css dist/components/Chart/Chart.css && cp src/components/Dropdown/Dropdown.css dist/components/Dropdown/Dropdown.css"
   },
   "eslintConfig": {
     "extends": "react-app"
