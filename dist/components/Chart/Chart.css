@@ -109,8 +109,27 @@ p.bfxcs__topbar-market {
   height: 43px;
   width: 100%;
   background: #131313;
+  line-height: 43px;
 
   border-top: 1px solid #2a2e39;
   border-bottom: 1px solid #2a2e39;
   user-select: none;
+
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bfxc__toolbar li {
+  display: inline-block;
+  vertical-align: top;
+  margin: 0 8px;
+
+  font-size: 11px;
+  color: #6b7b8b;
+}
+
+.bfxc__toolbar li:hover {
+  cursor: pointer;
+  color: #fff;
 }

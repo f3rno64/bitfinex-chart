@@ -7,6 +7,9 @@ import HFI from 'bfx-hf-indicators'
 import Dropdown from '../Dropdown'
 import ChartLib from './lib/chart'
 import formatAxisTick from './lib/util/format_axis_tick'
+import LineDrawing from './lib/drawings/line'
+import HorizontalLineDrawing from './lib/drawings/horizontal_line'
+import VerticalLineDrawing from './lib/drawings/vertical_line'
 import './Chart.css'
 
 const TOP_RESERVED_SPACE_PX = 90 // for toolbar and topbar
@@ -74,7 +77,9 @@ export default class Chart extends React.Component {
   }
 
   componentDidUpdate (prevProps) {
-    const { candles, width, height, trades, indicators } = this.props
+    const {
+      candles, width, height, trades, indicators, drawings
+    } = this.props
 
     if (candles !== prevProps.candles) {
       this.chart.updateData(candles)
@@ -91,6 +96,10 @@ export default class Chart extends React.Component {
     if (indicators !== prevProps.indicators) {
       this.chart.updateIndicators(indicators)
     }
+
+    if (drawings !== prevProps.drawings) {
+      this.chart.updateDrawings(drawings)
+    }
   }
 
   onHoveredCandle (hoveredCandle) {
@@ -100,7 +109,7 @@ export default class Chart extends React.Component {
   render () {
     const {
       width, height, marketLabel, bgColor = '#000', candleWidth,
-      onTimeFrameChange, onAddIndicator,
+      onTimeFrameChange, onAddIndicator, onAddDrawing
     } = this.props
 
     const { hoveredCandle } = this.state
@@ -171,7 +180,11 @@ export default class Chart extends React.Component {
           </div>
         </div>
 
-        <div className='bfxc__toolbar'></div>
+        <ul className='bfxc__toolbar'>
+          <li onClick={() => onAddDrawing && onAddDrawing(LineDrawing)}>Line</li>
+          <li onClick={() => onAddDrawing && onAddDrawing(HorizontalLineDrawing)}>HLine</li>
+          <li onClick={() => onAddDrawing && onAddDrawing(VerticalLineDrawing)}>VLine</li>
+        </ul>
 
         <canvas
           width={width}

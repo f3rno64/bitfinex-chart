@@ -8,6 +8,9 @@ import HFI from 'bfx-hf-indicators';
 import Dropdown from '../Dropdown';
 import ChartLib from './lib/chart';
 import formatAxisTick from './lib/util/format_axis_tick';
+import LineDrawing from './lib/drawings/line';
+import HorizontalLineDrawing from './lib/drawings/horizontal_line';
+import VerticalLineDrawing from './lib/drawings/vertical_line';
 import './Chart.css';
 const TOP_RESERVED_SPACE_PX = 90; // for toolbar and topbar
 
@@ -81,7 +84,8 @@ export default class Chart extends React.Component {
       width,
       height,
       trades,
-      indicators
+      indicators,
+      drawings
     } = this.props;
 
     if (candles !== prevProps.candles) {
@@ -99,6 +103,10 @@ export default class Chart extends React.Component {
     if (indicators !== prevProps.indicators) {
       this.chart.updateIndicators(indicators);
     }
+
+    if (drawings !== prevProps.drawings) {
+      this.chart.updateDrawings(drawings);
+    }
   }
 
   onHoveredCandle(hoveredCandle) {
@@ -115,7 +123,8 @@ export default class Chart extends React.Component {
       bgColor = '#000',
       candleWidth,
       onTimeFrameChange,
-      onAddIndicator
+      onAddIndicator,
+      onAddDrawing
     } = this.props;
     const {
       hoveredCandle
@@ -163,9 +172,15 @@ export default class Chart extends React.Component {
     }, React.createElement("ul", null, Object.values(HFI).filter(i => !!i.label).map(i => React.createElement("li", {
       key: i.id,
       onClick: () => onAddIndicator && onAddIndicator([i, i.args.map(a => a.default)])
-    }, i.humanLabel)))))), React.createElement("div", {
+    }, i.humanLabel)))))), React.createElement("ul", {
       className: "bfxc__toolbar"
-    }), React.createElement("canvas", {
+    }, React.createElement("li", {
+      onClick: () => onAddDrawing && onAddDrawing(LineDrawing)
+    }, "Line"), React.createElement("li", {
+      onClick: () => onAddDrawing && onAddDrawing(HorizontalLineDrawing)
+    }, "HLine"), React.createElement("li", {
+      onClick: () => onAddDrawing && onAddDrawing(VerticalLineDrawing)
+    }, "VLine")), React.createElement("canvas", {
       width: width,
       height: renderHeight,
       ref: this.axisCanvasRef

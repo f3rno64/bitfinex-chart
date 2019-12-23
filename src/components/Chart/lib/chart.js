@@ -113,6 +113,15 @@ export default class BitfinexTradingChart {
     this.renderAll()
   }
 
+  updateDrawings (drawings = []) {
+    this.drawings = drawings
+
+    if (drawings[0] && drawings[0].isActive()) {
+      this.activeDrawing = drawings[0]
+      console.log(drawings[0])
+    }
+  }
+
   updateIndicators (indicators = []) {
     this.indicators = indicators
     this.updateData(this.data)
@@ -538,8 +547,9 @@ export default class BitfinexTradingChart {
   }
 
   onMouseDown (e) {
-    const x = e.pageX - this.ohlcCanvas.offsetLeft
-    const y = e.pageY - this.ohlcCanvas.offsetTop
+    const rect = this.ohlcCanvas.getBoundingClientRect()
+    const x = e.pageX - rect.left
+    const y = e.pageY - rect.top
 
     // Drawings can prevent drag-start (i.e. when editing)
     if (this.activeDrawing) {
@@ -563,6 +573,10 @@ export default class BitfinexTradingChart {
     if (this.activeDrawing) {
       this.activeDrawing.onMouseMove(this.mousePosition.x, this.mousePosition.y)
     }
+
+    this.crosshairCanvas.style.cursor = this.activeDrawing && this.activeDrawing.isActive()
+      ? 'crosshair'
+      : 'default'
 
     if (this.isDragging && (!this.activeDrawing || !this.activeDrawing.isActive())) {
       this.vp.pan.x = e.pageX - this.dragStart.x
