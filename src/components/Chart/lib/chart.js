@@ -579,7 +579,7 @@ export default class BitfinexTradingChart {
       : 'default'
 
     if (this.isDragging && (!this.activeDrawing || !this.activeDrawing.isActive())) {
-      this.vp.pan.x = e.pageX - this.dragStart.x
+      this.vp.pan.x = this.mousePosition.x - this.dragStart.x
       this.clearAll()
       this.renderAll()
 
