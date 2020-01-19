@@ -22,11 +22,13 @@ export default (canvas, candles, y, width, vpWidth) => {
   ctx.fillStyle = CONFIG.AXIS_LABEL_COLOR
   ctx.textAlign = 'center'
 
+  // axis line
   drawLine(canvas, CONFIG.AXIS_COLOR, [
     { x: 0, y },
     { x: width, y }
   ])
 
+  // resolve tick width depending on domain
   const rightMTS = _last(candles)[0]
   const leftMTS = candles[0][0]
   const rangeLengthMTS = rightMTS - leftMTS
@@ -36,7 +38,7 @@ export default (canvas, candles, y, width, vpWidth) => {
   let tickDivisor = 60 * 1000 // 1min by default, overriden below
   const dayCount = rangeLengthMTS / TIME_FRAME_WIDTHS['1D']
 
-  if (dayCount > 1 && dayCount < CONFIG.AXIS_X_TICK_COUNT) {
+  if (dayCount > 1) {
     tickDivisor = 24 * 60 * 60 * 1000
   } else {
     const hourCount = rangeLengthMTS / TIME_FRAME_WIDTHS['1h']
@@ -46,6 +48,7 @@ export default (canvas, candles, y, width, vpWidth) => {
     }
   }
 
+  // generate ticks
   const paddedLeftMTS = leftMTS - (leftMTS % tickDivisor)
 
   for (let i = 0; i < CONFIG.AXIS_X_TICK_COUNT; i += 1) {
@@ -56,6 +59,9 @@ export default (canvas, candles, y, width, vpWidth) => {
     }
   }
 
+  let previousTick
+
+  // render ticks
   for (let i = 0; i < CONFIG.AXIS_X_TICK_COUNT; i += 1) {
     const mts = ticks[i] // (tickWidthMTS * i) + leftMTS
     const tickX = (((width - (rightMTS - mts)) / width) * vpWidth)
@@ -63,11 +69,10 @@ export default (canvas, candles, y, width, vpWidth) => {
     const date = new Date(mts)
     let label
 
-    // TODO: wip
-    if (date.getHours() === 0) {
-      label = `${date.getHours()}:${date.getMinutes()}`
-    } else {
+    if (previousTick && previousTick.getDay() === date.getDay()) {
       label = moment(date).format('HH:mm')
+    } else {
+      label = moment(date).format('DD')
     }
 
     ctx.fillText(label, tickX, tickY, tickWidthPX)
@@ -77,5 +82,7 @@ export default (canvas, candles, y, width, vpWidth) => {
       { x: tickX, y: tickY - CONFIG.AXIS_LABEL_FONT_SIZE_PX },
       { x: tickX, y: 0 },
     ])
+
+    previousTick = date
   }
 }

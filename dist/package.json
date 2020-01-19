@@ -25,7 +25,7 @@
     "start": "react-scripts start",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build": "babel ./src -d ./dist && cp package.json dist/ && cp src/components/Chart/Chart.css dist/components/Chart/Chart.css && cp src/components/Dropdown/Dropdown.css dist/components/Dropdown/Dropdown.css"
+    "build": "babel ./src -d ./dist && cp package.json dist/ && cp src/components/Chart/Chart.css dist/components/Chart/Chart.css && cp src/components/Dropdown/Dropdown.css dist/components/Dropdown/Dropdown.css && cp -r src/components/Chart/icon_font dist/components/Chart/icon_font"
   },
   "eslintConfig": {
     "extends": "react-app"

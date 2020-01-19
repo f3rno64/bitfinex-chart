@@ -1,11 +1,14 @@
 import _last from 'lodash/last'
 import _max from 'lodash/max'
 import _min from 'lodash/min'
+import CONFIG from '../config'
 
-const RISING_CANDLE_FILL = '#0f0'
-const RISING_VOL_FILL = 'rgba(0, 255, 0, 0.3)'
-const FALLING_CANDLE_FILL = '#f00'
-const FALLING_VOL_FILL = 'rgba(255, 0, 0, 0.3)'
+const { 
+  RISING_CANDLE_FILL,
+  RISING_VOL_FILL,
+  FALLING_CANDLE_FILL,
+  FALLING_VOL_FILL,
+} = CONFIG
 
 /**
  * Renders a series of candles on the target 2D context, using the specified
@@ -53,7 +56,7 @@ export default (ctx, candles, candleWidth, targetWidth, targetHeight, vpWidth) =
     ctx.strokeStyle = ctx.fillStyle
 
     // body
-    ctx.fillRect(
+    ctx[c >= o ? 'strokeRect' : 'fillRect'](
       x - (candleWidth / 2),
       y,
       candleWidth,

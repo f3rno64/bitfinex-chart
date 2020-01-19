@@ -38,7 +38,7 @@ export default ((canvas, candles, x, height, vpHeight) => {
   for (let i = 0; i < CONFIG.AXIS_Y_TICK_COUNT; i += 1) {
     const tickY = vpHeight - tickHeightPX * i;
     const tickX = x + CONFIG.AXIS_LABEL_MARGIN_PX;
-    const tick = Math.floor(minP + tickHeightPrice * i);
+    const tick = minP + tickHeightPrice * i;
     ctx.fillText(formatAxisTick(tick), tickX, tickY, canvas.width - x); // tick
 
     drawLine(canvas, CONFIG.AXIS_TICK_COLOR, [{

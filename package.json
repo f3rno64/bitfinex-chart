@@ -14,6 +14,7 @@
     "classnames": "^2.2.6",
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
+    "mouse-wheel": "^1.2.0",
     "randomcolor": "^0.5.4",
     "react": "^16.12.0",
     "react-custom-scrollbars": "^4.2.1",
@@ -25,7 +26,13 @@
     "start": "react-scripts start",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build": "babel ./src -d ./dist && cp package.json dist/ && cp src/components/Chart/Chart.css dist/components/Chart/Chart.css && cp src/components/Dropdown/Dropdown.css dist/components/Dropdown/Dropdown.css"
+    "build-app": "babel ./src -d ./dist",
+    "build-chart-css": "cp src/components/Chart/Chart.css dist/components/Chart/Chart.css",
+    "build-dropdown-css": "cp src/components/Dropdown/Dropdown.css dist/components/Dropdown/Dropdown.css",
+    "build-spinner-css": "cp src/components/LoadingBeeSpinner/LoadingBeeSpinner.css dist/components/LoadingBeeSpinner/LoadingBeeSpinner.css",
+    "build-isettings-css": "cp src/components/IndicatorSettingsModal/IndicatorSettingsModal.css dist/components/IndicatorSettingsModal/IndicatorSettingsModal.css",
+    "build-icon-font": "cp -r src/components/Chart/icon_font dist/components/Chart/icon_font",
+    "build": "npm run build-app && npm run build-chart-css && npm run build-dropdown-css && npm run build-spinner-css && npm run build-isettings-css && npm run build-icon-font"
   },
   "eslintConfig": {
     "extends": "react-app"
